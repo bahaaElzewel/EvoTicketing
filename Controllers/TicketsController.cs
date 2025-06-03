@@ -1,4 +1,4 @@
-using System.Net;
+using System.Text;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using EvoTicketing.Data;
@@ -7,6 +7,8 @@ using EvoTicketing.DTOs.OutGoing;
 using EvoTicketing.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace EvoTicketing.Controllers;
 
@@ -16,29 +18,31 @@ public class TicketsController : ControllerBase
 {
     private readonly EvoTicketingDbContext _context;
     private readonly IMapper _mapper;
-    
-    public TicketsController(EvoTicketingDbContext context, IMapper mapper)
+    private readonly ILogger<TicketsController> _logger;
+
+    public TicketsController(EvoTicketingDbContext context, IMapper mapper, ILogger<TicketsController> logger)
     {
         _context = context;
-        _mapper  = mapper;
+        _mapper = mapper;
+        _logger = logger;
     }
-    
+
     [HttpGet("AllTickets")]
     public async Task<IActionResult> Tickets()
     {
         // var tickets = await _context.tickets.FirstOrDefaultAsync();
-        var ticketsQuery     = _context.tickets.AsQueryable();
+        var ticketsQuery = _context.tickets.AsQueryable();
         var projectedTickets = ticketsQuery.ProjectTo<TicketsDTO>(_mapper.ConfigurationProvider);
-        var tickets          = await projectedTickets.ToListAsync();
+        var tickets = await projectedTickets.ToListAsync();
         return Ok(tickets);
     }
 
     [HttpGet("FindTicketId/{ticketId}")]
     public async Task<IActionResult> FindTicketId(int ticketId)
     {
-        var ticketQuery     = _context.tickets.AsQueryable();
+        var ticketQuery = _context.tickets.AsQueryable();
         var projectedTicket = ticketQuery.ProjectTo<TicketsDTO>(_mapper.ConfigurationProvider);
-        var ticket          = await projectedTicket.Where(x => x.Id == ticketId).FirstOrDefaultAsync();
+        var ticket = await projectedTicket.Where(x => x.Id == ticketId).FirstOrDefaultAsync();
         return Ok(ticket);
     }
 
@@ -47,9 +51,9 @@ public class TicketsController : ControllerBase
     {
         if (!ModelState.IsValid)
             return BadRequest("Bad request");
-        
+
         var _newTicket = _mapper.Map<Ticket>(request);
-        try 
+        try
         {
             await _context.AddAsync(_newTicket);
             await _context.SaveChangesAsync();
@@ -58,7 +62,45 @@ public class TicketsController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex.Message);
             return StatusCode(StatusCodes.Status500InternalServerError, $"Failed to save the ticket: {ex.InnerException?.Message ?? ex.Message}");
         }
+    }
+
+    [HttpPost("GetTickersFromRabbitMQ")]
+    public async Task<IActionResult> GetTickersFromRabbitMQ()
+    {
+        var factory = new ConnectionFactory
+        {
+            HostName = "localhost",
+            UserName = "bahaa",
+            Password = "bahaa",
+            VirtualHost = "/",
+        };
+
+        var conn = await factory.CreateConnectionAsync();
+
+        var channel = await conn.CreateChannelAsync();
+
+        await channel.QueueDeclareAsync("ticketsIssuing", durable: true, exclusive: false);
+
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        
+        consumer.ReceivedAsync += async (model, eventArgs) =>
+        {
+            var body = eventArgs.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            _logger.LogInformation("Received message: {Message}", message);
+
+            // Here you can process the message as needed
+            // For example, you could deserialize it and save it to the database
+
+            await channel.BasicAckAsync(eventArgs.DeliveryTag, multiple: false);
+
+        };
+
+        await channel.BasicConsumeAsync("ticketsIssuing", true, consumer);
+
+        return Ok();
     }
 }
