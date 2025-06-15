@@ -67,7 +67,7 @@ public class TicketsController : ControllerBase
         }
     }
 
-    [HttpPost("GetTickersFromRabbitMQ")]
+    [HttpPost("GetTicketsFromRabbitMQ")]
     public async Task<IActionResult> GetTickersFromRabbitMQ()
     {
         var factory = new ConnectionFactory
