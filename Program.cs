@@ -1,4 +1,5 @@
 using EvoTicketing.Data;
+using EvoTicketing.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,7 +17,12 @@ builder.Services.AddDbContext<EvoTicketingDbContext>(options => {
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+builder.Services.AddGrpc();
+builder.Services.AddScoped<TicketService>();
+
 var app = builder.Build();
+
+app.MapGrpcService<TicketService>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

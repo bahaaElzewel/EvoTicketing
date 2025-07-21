@@ -2,6 +2,7 @@ using AutoMapper;
 using EvoTicketing.DTOs.Incoming;
 using EvoTicketing.DTOs.OutGoing;
 using EvoTicketing.Models;
+using Google.Protobuf.WellKnownTypes;
 
 namespace EvoTicketing.Profiles;
 
@@ -29,5 +30,14 @@ public class TicketProfile : Profile
         .ForMember(dest => dest.Valid, opt => opt.MapFrom(src => 1))
         .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
         .ForMember(dest => dest.UpDatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
+
+        CreateMap<Ticket, EvoTicketingGRPC.Ticket>()
+            .ForMember(dest => dest.TicketId, opt => opt.MapFrom(src => src.Id.ToString()))
+            .ForMember(dest => dest.TicketCode, opt => opt.MapFrom(src => src.TicketCode))
+            .ForMember(dest => dest.IssuerName, opt => opt.MapFrom(src => src.IssuerName))
+            .ForMember(dest => dest.Occasion, opt => opt.MapFrom(src => src.Occasion))
+            .ForMember(dest => dest.Benefeciary, opt => opt.MapFrom(src => src.Benefeciary))
+            .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Price.ToString()))
+            .ForMember(dest => dest.ValidUntil, opt => opt.MapFrom(src => Timestamp.FromDateTime(src.ValidUntil.ToUniversalTime())));
     }
 }
