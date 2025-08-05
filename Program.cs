@@ -1,10 +1,37 @@
 using EvoTicketing.Data;
 using EvoTicketing.Services;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Services.AddOpenTelemetry()
+.ConfigureResource(resource => resource.AddService("TheTicketShop"))
+.WithMetrics(metrics =>
+{
+    metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation();
+    metrics.AddOtlpExporter(options =>
+    {
+        options.Endpoint = new Uri("http://localhost:18889");
+    });
+})
+.WithTracing(tracing =>
+{
+    tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddEntityFrameworkCoreInstrumentation();
+    tracing.AddOtlpExporter(options =>
+    {
+        options.Endpoint = new Uri("http://localhost:18889");
+    });
+});
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
