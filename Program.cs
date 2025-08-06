@@ -25,6 +25,7 @@ builder.Services.AddOpenTelemetry()
 {
     tracing
         .AddAspNetCoreInstrumentation()
+        .AddGrpcClientInstrumentation()
         .AddHttpClientInstrumentation()
         .AddEntityFrameworkCoreInstrumentation();
     tracing.AddOtlpExporter(options =>
