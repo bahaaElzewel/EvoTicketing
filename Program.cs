@@ -27,7 +27,9 @@ builder.Services.AddOpenTelemetry()
         .AddAspNetCoreInstrumentation()
         .AddGrpcClientInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddEntityFrameworkCoreInstrumentation();
+        .AddEntityFrameworkCoreInstrumentation(o => {
+            o.SetDbStatementForText = true;
+        });
     tracing.AddOtlpExporter(options =>
     {
         options.Endpoint = new Uri("http://localhost:18889");
