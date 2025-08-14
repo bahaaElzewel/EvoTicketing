@@ -50,6 +50,8 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddGrpc();
 builder.Services.AddScoped<TicketService>();
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 app.MapGrpcService<TicketService>();
@@ -66,5 +68,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.Run();
